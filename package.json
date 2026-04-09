@@ -1,7 +1,22 @@
 {
-  "name": "instruckt-mcp",
+  "name": "@tdwesten/instruckt-mcp",
   "version": "0.1.0",
   "description": "MCP server and API handlers for instruckt visual annotations",
+  "keywords": [
+    "instruckt",
+    "mcp",
+    "ai"
+  ],
+  "homepage": "https://github.com/tdwesten/instruckt-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/tdwesten/instruckt-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tdwesten/instruckt-mcp.git"
+  },
+  "license": "MIT",
+  "author": "Thomas van der Westen",
   "type": "module",
   "exports": {
     ".": {
@@ -15,8 +30,13 @@
       "require": "./dist/nextjs.cjs"
     }
   },
+  "main": "index.js",
   "bin": {
-    "instruckt-mcp": "./dist/bin/instruckt-mcp.js"
+    "instruckt-mcp": "dist/bin/instruckt-mcp.js"
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
   },
   "files": [
     "dist"
@@ -26,9 +46,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
-  },
-  "engines": {
-    "node": ">=18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -40,5 +57,7 @@
     "typescript": "^5.5.0",
     "vitest": "^3.0.0"
   },
-  "license": "MIT"
+  "engines": {
+    "node": ">=18"
+  }
 }
