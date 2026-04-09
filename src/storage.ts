@@ -84,7 +84,8 @@ export class InstrucktStorage {
     const index = all.findIndex((a) => a.id === id);
     if (index === -1) throw new Error(`Annotation ${id} not found`);
 
-    if (input.severity === "dismissed") {
+    const isDismissed = input.severity === "dismissed" || input.status === "dismissed";
+    if (isDismissed) {
       const [annotation] = all.splice(index, 1);
       await this.write(all);
       if (annotation.screenshot) {
@@ -93,7 +94,9 @@ export class InstrucktStorage {
       return { ...annotation, severity: "dismissed" };
     }
 
-    all[index] = { ...all[index], ...input };
+    const { status, ...rest } = input;
+    const resolved = status === "resolved" ? true : status === "pending" ? false : rest.resolved;
+    all[index] = { ...all[index], ...rest, ...(resolved !== undefined ? { resolved } : {}) };
     await this.write(all);
     return all[index];
   }

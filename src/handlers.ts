@@ -3,8 +3,12 @@ import type { Annotation, CreateAnnotationInput, UpdateAnnotationInput } from ".
 
 export function createRequestHandlers(storage: InstrucktStorage) {
   return {
-    async getAnnotations(): Promise<Annotation[]> {
-      return storage.getAll();
+    async getAnnotations(): Promise<(Annotation & { status: string })[]> {
+      const all = await storage.getAll();
+      return all.map((a) => ({
+        ...a,
+        status: a.resolved ? "resolved" : "pending",
+      }));
     },
     async createAnnotation(input: CreateAnnotationInput): Promise<Annotation> {
       return storage.add(input);

@@ -40,4 +40,5 @@ export interface UpdateAnnotationInput {
   screenshot?: string | null;
   resolved?: boolean;
   severity?: string;
+  status?: "pending" | "resolved" | "dismissed";
 }
