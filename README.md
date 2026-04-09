@@ -25,7 +25,6 @@ npm install instruckt-mcp
 Create a route handler at `app/api/annotations/[[...slug]]/route.ts`:
 
 ```ts
-// app/api/annotations/[[...slug]]/route.ts
 import { createHandlers } from 'instruckt-mcp/nextjs'
 
 export const { GET, POST, PATCH } = createHandlers()
@@ -76,7 +75,7 @@ app.patch('/annotations/:id', async (req, res) => {
 
 ### Standalone MCP server
 
-If you're using the Vite plugin's built-in dev server, you don't need an HTTP backend. Just point the MCP server at your `.instruckt` directory:
+If your app writes annotations directly to disk (no HTTP backend), point the MCP server at your `.instruckt` directory:
 
 ```json
 {
@@ -99,16 +98,15 @@ Once connected, your AI agent has three tools:
 |------|-------------|
 | `get_all_pending` | Returns all unresolved annotations — comment, element, page URL, severity |
 | `get_screenshot` | Returns the screenshot image for a specific annotation by ID |
-| `resolve` | Marks an annotation as resolved, removing the marker on next page load |
+| `resolve` | Marks an annotation as resolved; the instruckt widget removes the marker on its next poll |
 
 ## How It Works
 
-1. instruckt runs in your app and captures annotations + optional screenshots
+1. instruckt runs in your app and captures annotations with optional screenshots
 2. Annotations are posted to your API endpoint and stored as JSON on disk
-3. Screenshots are saved as `.png` files alongside the JSON
-4. Your AI agent connects via MCP and calls `get_all_pending` to see what needs fixing
-5. The agent reads the feedback, looks at screenshots with `get_screenshot`, and makes code changes
-6. When done, the agent calls `resolve` to clear the annotation
+3. Your AI agent connects via MCP and calls `get_all_pending` to see what needs fixing
+4. The agent reads the feedback, inspects screenshots with `get_screenshot`, and makes code changes
+5. When done, the agent calls `resolve` — the widget picks up the status change on its next poll and removes the marker
 
 ## Storage
 
@@ -123,7 +121,7 @@ await storage.getAll()          // all annotations
 await storage.getPending()      // unresolved only
 await storage.add(input)        // create annotation
 await storage.update(id, input) // update annotation
-await storage.resolve(id)       // mark resolved + remove from list
+await storage.resolve(id)       // mark as resolved
 await storage.getScreenshot(id) // Buffer | null
 ```
 
