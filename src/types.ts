@@ -39,4 +39,5 @@ export interface UpdateAnnotationInput {
   comment?: string;
   screenshot?: string | null;
   resolved?: boolean;
+  severity?: string;
 }

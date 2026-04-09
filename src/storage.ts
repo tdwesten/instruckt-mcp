@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Annotation, CreateAnnotationInput, UpdateAnnotationInput } from "./types.js";
@@ -83,6 +83,15 @@ export class InstrucktStorage {
     const all = await this.read();
     const index = all.findIndex((a) => a.id === id);
     if (index === -1) throw new Error(`Annotation ${id} not found`);
+
+    if (input.severity === "dismissed") {
+      const [annotation] = all.splice(index, 1);
+      await this.write(all);
+      if (annotation.screenshot) {
+        await unlink(join(this.screenshotDir, annotation.screenshot)).catch(() => {});
+      }
+      return { ...annotation, severity: "dismissed" };
+    }
 
     all[index] = { ...all[index], ...input };
     await this.write(all);
