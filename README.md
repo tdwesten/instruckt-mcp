@@ -16,7 +16,6 @@ npm install instruckt-mcp
 |-------|----------|
 | [Next.js](#nextjs) | App Router route handler |
 | [Custom backend](#custom-backend) | Any Node.js framework |
-| [Standalone MCP server](#standalone-mcp-server) | No HTTP backend needed |
 
 ---
 
@@ -69,23 +68,6 @@ app.post('/annotations', async (req, res) => {
 app.patch('/annotations/:id', async (req, res) => {
   res.json(await handlers.updateAnnotation(req.params.id, req.body))
 })
-```
-
----
-
-### Standalone MCP server
-
-If your app writes annotations directly to disk (no HTTP backend), point the MCP server at your `.instruckt` directory:
-
-```json
-{
-  "mcpServers": {
-    "instruckt": {
-      "command": "npx",
-      "args": ["instruckt-mcp", "--dir", ".instruckt"]
-    }
-  }
-}
 ```
 
 ---
