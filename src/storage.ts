@@ -102,12 +102,9 @@ export class InstrucktStorage {
     const all = await this.read();
     const index = all.findIndex((a) => a.id === id);
     if (index === -1) throw new Error(`Annotation ${id} not found`);
-    const [annotation] = all.splice(index, 1);
+    all[index] = { ...all[index], resolved: true };
     await this.write(all);
-    if (annotation.screenshot) {
-      await unlink(join(this.screenshotDir, annotation.screenshot)).catch(() => {});
-    }
-    return { ...annotation, resolved: true };
+    return all[index];
   }
 
   async getScreenshot(id: string): Promise<Buffer | null> {
