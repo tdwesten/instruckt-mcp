@@ -90,7 +90,13 @@ export class InstrucktStorage {
   }
 
   async resolve(id: string): Promise<Annotation> {
-    return this.update(id, { resolved: true });
+    const all = await this.read();
+    const index = all.findIndex((a) => a.id === id);
+    if (index === -1) throw new Error(`Annotation ${id} not found`);
+    const annotation = { ...all[index], resolved: true };
+    all.splice(index, 1);
+    await this.write(all);
+    return annotation;
   }
 
   async getScreenshot(id: string): Promise<Buffer | null> {
