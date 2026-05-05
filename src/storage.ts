@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Annotation, CreateAnnotationInput, UpdateAnnotationInput } from "./types.js";
+import { padScreenshot } from "./screenshot.js";
 
 export class InstrucktStorage {
   private filePath: string;
@@ -51,7 +52,8 @@ export class InstrucktStorage {
     if (input.screenshot && input.screenshot.startsWith("data:")) {
       screenshotFile = `${id}.png`;
       const base64Data = input.screenshot.replace(/^data:image\/\w+;base64,/, "");
-      await writeFile(join(this.screenshotDir, screenshotFile), Buffer.from(base64Data, "base64"));
+      const padded = await padScreenshot(Buffer.from(base64Data, "base64"));
+      await writeFile(join(this.screenshotDir, screenshotFile), padded);
     }
 
     const annotation: Annotation = {
