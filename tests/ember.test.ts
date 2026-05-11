@@ -122,6 +122,66 @@ describe("createEmberMiddleware", () => {
     expect(res.calls.status).toBe(201);
     expect((res.calls.json as any).comment).toBe("Streamed");
   });
+
+  it("registers PATCH /api/annotations/:id and updates the annotation", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const postHandler = app.routes["POST /api/annotations"];
+    const postRes = makeRes();
+    await postHandler(
+      makeReqWithBody({
+        url: "http://localhost:4200",
+        x: 0, y: 0,
+        element: "div", element_path: "body > div",
+        comment: "Original",
+      }) as any,
+      postRes as any,
+    );
+    const id = (postRes.calls.json as any).id;
+
+    const patchHandler = app.routes["PATCH /api/annotations/:id"];
+    expect(patchHandler).toBeDefined();
+
+    const res = makeRes();
+    await patchHandler(
+      { params: { id }, body: { comment: "Updated" }, on() {} } as any,
+      res as any,
+    );
+
+    expect(res.calls.status).toBe(200);
+    expect((res.calls.json as any).comment).toBe("Updated");
+  });
+
+  it("PATCH returns 400 when id is missing", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const handler = app.routes["PATCH /api/annotations/:id"];
+    const res = makeRes();
+    await handler(
+      { params: {}, body: { comment: "x" }, on() {} } as any,
+      res as any,
+    );
+
+    expect(res.calls.status).toBe(400);
+    expect((res.calls.json as any).error).toBe("Missing annotation ID");
+  });
+
+  it("PATCH returns 404 when annotation is not found", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const handler = app.routes["PATCH /api/annotations/:id"];
+    const res = makeRes();
+    await handler(
+      { params: { id: "does-not-exist" }, body: { comment: "x" }, on() {} } as any,
+      res as any,
+    );
+
+    expect(res.calls.status).toBe(404);
+    expect((res.calls.json as any).error).toBe("Annotation not found");
+  });
 });
 
 function makeReqWithBody(body: unknown) {
