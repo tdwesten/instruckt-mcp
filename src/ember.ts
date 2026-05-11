@@ -56,7 +56,10 @@ export function createEmberMiddleware(options: EmberMiddlewareOptions = {}) {
   const storage = new InstrucktStorage(dir);
   const handlers = createRequestHandlers(storage);
 
-  return function (_app: ExpressLikeApp): void {
-    // endpoints worden in volgende taken toegevoegd
+  return function (app: ExpressLikeApp): void {
+    app.get(route, async (_req, res) => {
+      const annotations = await handlers.getAnnotations();
+      res.status(200).json(annotations);
+    });
   };
 }
