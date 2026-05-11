@@ -66,4 +66,69 @@ describe("createEmberMiddleware", () => {
 
     expect(res.calls.json).toEqual([]);
   });
+
+  it("registers POST /api/annotations and creates an annotation (201)", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const handler = app.routes["POST /api/annotations"];
+    expect(handler).toBeDefined();
+
+    const res = makeRes();
+    await handler(
+      makeReqWithBody({
+        url: "http://localhost:4200",
+        x: 10,
+        y: 20,
+        element: "div",
+        element_path: "body > div",
+        comment: "From Ember",
+      }) as any,
+      res as any,
+    );
+
+    expect(res.calls.status).toBe(201);
+    expect((res.calls.json as any).id).toBeDefined();
+    expect((res.calls.json as any).comment).toBe("From Ember");
+  });
+
+  it("POST parses JSON body from request stream when req.body is absent", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const handler = app.routes["POST /api/annotations"];
+    const payload = JSON.stringify({
+      url: "http://localhost:4200",
+      x: 0,
+      y: 0,
+      element: "p",
+      element_path: "body > p",
+      comment: "Streamed",
+    });
+
+    const listeners: Record<string, Function> = {};
+    const req = {
+      on(event: string, cb: Function) {
+        listeners[event] = cb;
+      },
+    };
+    const res = makeRes();
+    const pending = handler(req as any, res as any);
+
+    listeners.data(Buffer.from(payload));
+    listeners.end();
+    await pending;
+
+    expect(res.calls.status).toBe(201);
+    expect((res.calls.json as any).comment).toBe("Streamed");
+  });
 });
+
+function makeReqWithBody(body: unknown) {
+  return {
+    body,
+    on() {
+      // no-op — body already parsed
+    },
+  };
+}

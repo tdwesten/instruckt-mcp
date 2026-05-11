@@ -61,5 +61,11 @@ export function createEmberMiddleware(options: EmberMiddlewareOptions = {}) {
       const annotations = await handlers.getAnnotations();
       res.status(200).json(annotations);
     });
+
+    app.post(route, async (req, res) => {
+      const body = (await readJsonBody(req)) as Record<string, unknown>;
+      const annotation = await handlers.createAnnotation(body as never);
+      res.status(201).json(annotation);
+    });
   };
 }
