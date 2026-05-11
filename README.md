@@ -15,6 +15,7 @@ npm install instruckt-mcp
 | Setup | Use when |
 |-------|----------|
 | [Next.js](#nextjs) | App Router route handler |
+| [Ember.js 6+](#emberjs-6) | Dev-server middleware via `server/index.js` |
 | [Custom backend](#custom-backend) | Any Node.js framework |
 
 ---
@@ -28,6 +29,43 @@ import { createHandlers } from 'instruckt-mcp/nextjs'
 
 export const { GET, POST, PATCH } = createHandlers()
 ```
+
+Then wire up the MCP server in your Claude/agent config:
+
+```json
+{
+  "mcpServers": {
+    "instruckt": {
+      "command": "npx",
+      "args": ["instruckt-mcp"]
+    }
+  }
+}
+```
+
+---
+
+### Ember.js 6+
+
+Add the adapter to your Ember CLI dev-server in `server/index.js`:
+
+```js
+const { createEmberMiddleware } = require('@tdwesten/instruckt-mcp/ember');
+
+module.exports = createEmberMiddleware();
+```
+
+This registers `GET`, `POST`, and `PATCH /api/annotations` on the Ember CLI Express
+dev-server. Request bodies up to 10 MB are accepted (large enough for base64-encoded
+screenshots). Options:
+
+| Option | Type   | Default              | Description                       |
+| ------ | ------ | -------------------- | --------------------------------- |
+| route  | string | `/api/annotations`   | Base path for the endpoints (trailing slashes are trimmed) |
+| dir    | string | `.instruckt`         | Storage directory                 |
+
+**Development only.** Ember CLI's middleware runs during `ember serve`. For production,
+use the [Custom backend](#custom-backend) setup with your own Node server.
 
 Then wire up the MCP server in your Claude/agent config:
 

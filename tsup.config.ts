@@ -5,6 +5,7 @@ export default defineConfig([
     entry: {
       index: "src/index.ts",
       nextjs: "src/nextjs.ts",
+      ember: "src/ember.ts",
     },
     format: ["esm", "cjs"],
     dts: true,

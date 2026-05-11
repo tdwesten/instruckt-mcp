@@ -1,0 +1,98 @@
+import { InstrucktStorage } from "./storage.js";
+import { createRequestHandlers } from "./handlers.js";
+
+interface EmberMiddlewareOptions {
+  dir?: string;
+  route?: string;
+}
+
+interface ExpressLikeRequest {
+  url?: string;
+  params?: Record<string, string>;
+  body?: unknown;
+  on(event: "data", cb: (chunk: Buffer) => void): void;
+  on(event: "end", cb: () => void): void;
+  on(event: "error", cb: (err: Error) => void): void;
+}
+
+interface ExpressLikeResponse {
+  status(code: number): ExpressLikeResponse;
+  json(payload: unknown): ExpressLikeResponse;
+}
+
+type RouteHandler = (
+  req: ExpressLikeRequest,
+  res: ExpressLikeResponse,
+) => void | Promise<void>;
+
+interface ExpressLikeApp {
+  get(path: string, handler: RouteHandler): void;
+  post(path: string, handler: RouteHandler): void;
+  patch(path: string, handler: RouteHandler): void;
+}
+
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+async function readJsonBody(req: ExpressLikeRequest): Promise<unknown> {
+  if (req.body !== undefined && req.body !== null) return req.body;
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    let aborted = false;
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => {
+      if (aborted) return;
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        aborted = true;
+        reject(new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      if (aborted) return;
+      if (chunks.length === 0) return resolve({});
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+export function createEmberMiddleware(options: EmberMiddlewareOptions = {}) {
+  const dir = options.dir ?? ".instruckt";
+  const route = (options.route ?? "/api/annotations").replace(/\/+$/, "");
+  const storage = new InstrucktStorage(dir);
+  const handlers = createRequestHandlers(storage);
+
+  return function (app: ExpressLikeApp): void {
+    app.get(route, async (_req, res) => {
+      const annotations = await handlers.getAnnotations();
+      res.status(200).json(annotations);
+    });
+
+    app.post(route, async (req, res) => {
+      const body = (await readJsonBody(req)) as Record<string, unknown>;
+      const annotation = await handlers.createAnnotation(body as never);
+      res.status(201).json(annotation);
+    });
+
+    app.patch(`${route}/:id`, async (req, res) => {
+      const id = req.params?.id;
+      if (!id) {
+        res.status(400).json({ error: "Missing annotation ID" });
+        return;
+      }
+      const body = (await readJsonBody(req)) as Record<string, unknown>;
+      try {
+        const annotation = await handlers.updateAnnotation(id, body as never);
+        res.status(200).json(annotation);
+      } catch {
+        res.status(404).json({ error: "Annotation not found" });
+      }
+    });
+  };
+}

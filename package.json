@@ -28,6 +28,11 @@
       "types": "./dist/nextjs.d.ts",
       "import": "./dist/nextjs.js",
       "require": "./dist/nextjs.cjs"
+    },
+    "./ember": {
+      "types": "./dist/ember.d.ts",
+      "import": "./dist/ember.js",
+      "require": "./dist/ember.cjs"
     }
   },
   "main": "index.js",
