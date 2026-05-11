@@ -56,11 +56,12 @@ module.exports = createEmberMiddleware();
 ```
 
 This registers `GET`, `POST`, and `PATCH /api/annotations` on the Ember CLI Express
-dev-server. Options:
+dev-server. Request bodies up to 10 MB are accepted (large enough for base64-encoded
+screenshots). Options:
 
 | Option | Type   | Default              | Description                       |
 | ------ | ------ | -------------------- | --------------------------------- |
-| route  | string | `/api/annotations`   | Base path for the endpoints       |
+| route  | string | `/api/annotations`   | Base path for the endpoints (trailing slashes are trimmed) |
 | dir    | string | `.instruckt`         | Storage directory                 |
 
 **Development only.** Ember CLI's middleware runs during `ember serve`. For production,
