@@ -168,6 +168,32 @@ describe("createEmberMiddleware", () => {
     expect((res.calls.json as any).error).toBe("Missing annotation ID");
   });
 
+  it("rejects bodies larger than 10MB", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir })(app as any);
+
+    const handler = app.routes["POST /api/annotations"];
+    const listeners: Record<string, Function> = {};
+    const req = {
+      on(event: string, cb: Function) {
+        listeners[event] = cb;
+      },
+    };
+    const res = makeRes();
+    const pending = handler(req as any, res as any);
+
+    listeners.data(Buffer.alloc(11 * 1024 * 1024));
+    await expect(pending).rejects.toThrow(/exceeds/);
+  });
+
+  it("trims trailing slashes from the route option", async () => {
+    const app = makeMockApp();
+    createEmberMiddleware({ dir, route: "/api/foo/" })(app as any);
+
+    expect(app.routes["GET /api/foo"]).toBeDefined();
+    expect(app.routes["PATCH /api/foo/:id"]).toBeDefined();
+  });
+
   it("PATCH returns 404 when annotation is not found", async () => {
     const app = makeMockApp();
     createEmberMiddleware({ dir })(app as any);

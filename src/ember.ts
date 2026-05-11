@@ -31,17 +31,29 @@ interface ExpressLikeApp {
   patch(path: string, handler: RouteHandler): void;
 }
 
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
 async function readJsonBody(req: ExpressLikeRequest): Promise<unknown> {
   if (req.body !== undefined && req.body !== null) return req.body;
   return new Promise((resolve, reject) => {
-    let data = "";
+    let size = 0;
+    let aborted = false;
+    const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => {
-      data += chunk.toString("utf-8");
+      if (aborted) return;
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        aborted = true;
+        reject(new Error(`Request body exceeds ${MAX_BODY_BYTES} bytes`));
+        return;
+      }
+      chunks.push(chunk);
     });
     req.on("end", () => {
-      if (!data) return resolve({});
+      if (aborted) return;
+      if (chunks.length === 0) return resolve({});
       try {
-        resolve(JSON.parse(data));
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")));
       } catch (err) {
         reject(err);
       }
@@ -52,7 +64,7 @@ async function readJsonBody(req: ExpressLikeRequest): Promise<unknown> {
 
 export function createEmberMiddleware(options: EmberMiddlewareOptions = {}) {
   const dir = options.dir ?? ".instruckt";
-  const route = options.route ?? "/api/annotations";
+  const route = (options.route ?? "/api/annotations").replace(/\/+$/, "");
   const storage = new InstrucktStorage(dir);
   const handlers = createRequestHandlers(storage);
 
