@@ -34,7 +34,11 @@ export class InstrucktStorage {
     let normalized = false;
 
     const normalizedAnnotations = annotations.map((annotation) => {
-      if (annotation.resolved && annotation.status === "pending") {
+      if (
+        annotation.resolved &&
+        annotation.status !== "resolved" &&
+        annotation.status !== "dismissed"
+      ) {
         normalized = true;
         return { ...annotation, status: "resolved" as const };
       }
@@ -42,7 +46,12 @@ export class InstrucktStorage {
     });
 
     if (normalized) {
-      await this.write(normalizedAnnotations);
+      // Best-effort persistence: consumers that read the file directly need the
+      // corrected status, but a read must never fail because the correction
+      // could not be written back.
+      try {
+        await this.write(normalizedAnnotations);
+      } catch {}
     }
 
     return normalizedAnnotations;

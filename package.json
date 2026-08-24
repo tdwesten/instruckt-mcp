@@ -1,6 +1,6 @@
 {
   "name": "@tdwesten/instruckt-mcp",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "description": "MCP server and API handlers for instruckt visual annotations",
   "keywords": [
     "instruckt",

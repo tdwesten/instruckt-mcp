@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -167,6 +167,53 @@ describe("InstrucktStorage", () => {
 
     const persisted = JSON.parse(await readFile(filePath, "utf-8"));
     expect(persisted[0]).toMatchObject({ resolved: true, status: "resolved" });
+  });
+
+  it("normalizes legacy resolved annotations without a status when reading", async () => {
+    const a = await storage.add({
+      url: "http://localhost:3000",
+      x: 0, y: 0,
+      element: "div", element_path: "body > div",
+      comment: "Legacy annotation without status",
+    });
+    const filePath = join(dir, "annotations.json");
+    const annotations = JSON.parse(await readFile(filePath, "utf-8"));
+    annotations[0] = { ...annotations[0], resolved: true };
+    delete annotations[0].status;
+    await writeFile(filePath, JSON.stringify(annotations, null, 2), "utf-8");
+
+    const all = await storage.getAll();
+    expect(all[0]).toMatchObject({ id: a.id, resolved: true, status: "resolved" });
+
+    const persisted = JSON.parse(await readFile(filePath, "utf-8"));
+    expect(persisted[0]).toMatchObject({ resolved: true, status: "resolved" });
+  });
+
+  it("returns normalized annotations when the self-heal write fails", async () => {
+    const a = await storage.add({
+      url: "http://localhost:3000",
+      x: 0, y: 0,
+      element: "div", element_path: "body > div",
+      comment: "Read-only legacy annotation",
+    });
+    const filePath = join(dir, "annotations.json");
+    const annotations = JSON.parse(await readFile(filePath, "utf-8"));
+    annotations[0] = { ...annotations[0], resolved: true, status: "pending" };
+    await writeFile(filePath, JSON.stringify(annotations, null, 2), "utf-8");
+
+    const writeSpy = vi
+      .spyOn(
+        storage as unknown as { write(annotations: unknown[]): Promise<void> },
+        "write",
+      )
+      .mockRejectedValueOnce(new Error("Disk is read-only"));
+
+    const all = await storage.getAll();
+    expect(writeSpy).toHaveBeenCalledOnce();
+    expect(all[0]).toMatchObject({ id: a.id, resolved: true, status: "resolved" });
+
+    const persisted = JSON.parse(await readFile(filePath, "utf-8"));
+    expect(persisted[0]).toMatchObject({ resolved: true, status: "pending" });
   });
 
   it("removes dismissed annotations and their screenshots", async () => {
