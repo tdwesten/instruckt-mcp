@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import type { Annotation, CreateAnnotationInput, UpdateAnnotationInput } from "./types.js";
 import { padScreenshot } from "./screenshot.js";
 
+type StoredAnnotation = Annotation & { status?: UpdateAnnotationInput["status"] };
+
 export class InstrucktStorage {
   private filePath: string;
   private screenshotDir: string;
@@ -25,13 +27,28 @@ export class InstrucktStorage {
     this.initialized = true;
   }
 
-  private async read(): Promise<Annotation[]> {
+  private async read(): Promise<StoredAnnotation[]> {
     await this.init();
     const raw = await readFile(this.filePath, "utf-8");
-    return JSON.parse(raw);
+    const annotations = JSON.parse(raw) as StoredAnnotation[];
+    let normalized = false;
+
+    const normalizedAnnotations = annotations.map((annotation) => {
+      if (annotation.resolved && annotation.status === "pending") {
+        normalized = true;
+        return { ...annotation, status: "resolved" as const };
+      }
+      return annotation;
+    });
+
+    if (normalized) {
+      await this.write(normalizedAnnotations);
+    }
+
+    return normalizedAnnotations;
   }
 
-  private async write(annotations: Annotation[]): Promise<void> {
+  private async write(annotations: StoredAnnotation[]): Promise<void> {
     await writeFile(this.filePath, JSON.stringify(annotations, null, 2), "utf-8");
   }
 
@@ -96,9 +113,15 @@ export class InstrucktStorage {
       return { ...annotation, severity: "dismissed" };
     }
 
-    const { status, ...rest } = input;
-    const resolved = status === "resolved" ? true : status === "pending" ? false : rest.resolved;
-    all[index] = { ...all[index], ...rest, ...(resolved !== undefined ? { resolved } : {}) };
+    const { status, resolved: inputResolved, ...rest } = input;
+    const resolved = status === "resolved" ? true : status === "pending" ? false : inputResolved;
+    all[index] = {
+      ...all[index],
+      ...rest,
+      ...(resolved !== undefined
+        ? { resolved, status: resolved ? ("resolved" as const) : ("pending" as const) }
+        : {}),
+    };
     await this.write(all);
     return all[index];
   }
@@ -107,7 +130,7 @@ export class InstrucktStorage {
     const all = await this.read();
     const index = all.findIndex((a) => a.id === id);
     if (index === -1) throw new Error(`Annotation ${id} not found`);
-    all[index] = { ...all[index], resolved: true };
+    all[index] = { ...all[index], resolved: true, status: "resolved" };
     await this.write(all);
     return all[index];
   }

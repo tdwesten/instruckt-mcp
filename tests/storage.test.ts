@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { mkdtemp, rm, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { InstrucktStorage } from "../src/storage.js";
@@ -107,7 +107,7 @@ describe("InstrucktStorage", () => {
     expect(all[0].comment).toBe("Updated");
   });
 
-  it("resolves an annotation", async () => {
+  it("sets resolved and status when resolving an annotation", async () => {
     const a = await storage.add({
       url: "http://localhost:3000",
       x: 0, y: 0,
@@ -115,9 +115,74 @@ describe("InstrucktStorage", () => {
       comment: "Resolve me",
     });
 
-    await storage.resolve(a.id);
+    const resolved = await storage.resolve(a.id);
     const all = await storage.getAll();
-    expect(all[0].resolved).toBe(true);
+    expect(resolved).toMatchObject({ resolved: true, status: "resolved" });
+    expect(all[0]).toMatchObject({ resolved: true, status: "resolved" });
+
+    const raw = await readFile(join(dir, "annotations.json"), "utf-8");
+    expect(JSON.parse(raw)[0]).toMatchObject({ resolved: true, status: "resolved" });
+  });
+
+  it("keeps resolved and status in sync when updating an annotation", async () => {
+    const a = await storage.add({
+      url: "http://localhost:3000",
+      x: 0, y: 0,
+      element: "div", element_path: "body > div",
+      comment: "Update me",
+    });
+
+    expect(await storage.update(a.id, { resolved: true })).toMatchObject({
+      resolved: true,
+      status: "resolved",
+    });
+    expect(await storage.update(a.id, { status: "pending" })).toMatchObject({
+      resolved: false,
+      status: "pending",
+    });
+    expect(await storage.update(a.id, { status: "resolved" })).toMatchObject({
+      resolved: true,
+      status: "resolved",
+    });
+    expect(await storage.update(a.id, { resolved: false })).toMatchObject({
+      resolved: false,
+      status: "pending",
+    });
+  });
+
+  it("normalizes legacy resolved annotations when reading", async () => {
+    const a = await storage.add({
+      url: "http://localhost:3000",
+      x: 0, y: 0,
+      element: "div", element_path: "body > div",
+      comment: "Legacy annotation",
+    });
+    const filePath = join(dir, "annotations.json");
+    const annotations = JSON.parse(await readFile(filePath, "utf-8"));
+    annotations[0] = { ...annotations[0], resolved: true, status: "pending" };
+    await writeFile(filePath, JSON.stringify(annotations, null, 2), "utf-8");
+
+    const all = await storage.getAll();
+    expect(all[0]).toMatchObject({ id: a.id, resolved: true, status: "resolved" });
+
+    const persisted = JSON.parse(await readFile(filePath, "utf-8"));
+    expect(persisted[0]).toMatchObject({ resolved: true, status: "resolved" });
+  });
+
+  it("removes dismissed annotations and their screenshots", async () => {
+    const base64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const a = await storage.add({
+      url: "http://localhost:3000",
+      x: 0, y: 0,
+      element: "div", element_path: "body > div",
+      comment: "Dismiss me",
+      screenshot: base64,
+    });
+
+    const dismissed = await storage.update(a.id, { status: "dismissed" });
+    expect(dismissed.severity).toBe("dismissed");
+    expect(await storage.getAll()).toEqual([]);
+    expect(await storage.getScreenshot(a.id)).toBeNull();
   });
 
   it("reads screenshot as buffer", async () => {
